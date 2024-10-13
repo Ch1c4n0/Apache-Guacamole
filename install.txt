@@ -1,0 +1,86 @@
+1 - Required packages and dependencies for Guacamole
+
+sudo apt install build-essential libcairo2-dev libjpeg-turbo8-dev \
+    libpng-dev libtool-bin libossp-uuid-dev libvncserver-dev \
+    freerdp2-dev libssh2-1-dev libtelnet-dev libwebsockets-dev \
+    libpulse-dev libvorbis-dev libwebp-dev libssl-dev \
+    libpango1.0-dev libswscale-dev libavcodec-dev libavutil-dev \
+    libavformat-dev
+
+2 -  Download and Install Apache Guacamole From the Source
+
+sudo wget https://downloads.apache.org/guacamole/1.5.4/source/guacamole-server-1.5.4.tar.gz
+
+3 - Extract your download
+sudo tar -xvf guacamole-server-1.5.4.tar.gz
+sudo cd guacamole-server-1.5.4
+
+4 - Compile
+
+sudo ./configure --with-init-dir=/etc/init.d --enable-allow-freerdp-snapshots
+sudo make
+sudo make install
+
+5 - Start and Enable Apache Guacamole
+
+sudo ldconfig
+sudo systemctl daemon-reload
+sudo systemctl start guacd
+sudo systemctl enable guacd
+
+6 - Create Folders
+
+sudo mkdir -p /etc/guacamole/{extensions,lib}
+
+7 -  Install the Guacamole Web App
+
+sudo apt install tomcat9 tomcat9-admin tomcat9-common tomcat9-user -y
+sudo wget https://downloads.apache.org/guacamole/1.5.4/binary/guacamole-1.5.4.war
+sudo mv guacamole-1.5.4.war /var/lib/tomcat9/webapps/guacamole.war
+sudo systemctl restart tomcat9 guacd
+
+8 - Configure Apache Guacamole Database
+
+sudo apt install mariadb-server -y
+sudo mysql_secure_installation
+sudo wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.26.tar.gz
+sudo tar -xf mysql-connector-java-8.0.26.tar.gz
+sudo cp mysql-connector-java-8.0.26/mysql-connector-java-8.0.26.jar /etc/guacamole/lib/
+sudo wget https://downloads.apache.org/guacamole/1.5.4/binary/guacamole-auth-jdbc-1.5.4.tar.gz
+sudo tar -xf guacamole-auth-jdbc-1.5.4.tar.gz
+sudo mv guacamole-auth-jdbc-1.5.4/mysql/guacamole-auth-jdbc-mysql-1.5.4.jar /etc/guacamole/extensions/
+
+9 -  Create a Guacamole Database and User
+sudo mysql -u root -p
+
+MariaDB [(none)]> CREATE DATABASE guac_db;
+MariaDB [(none)]> CREATE USER 'guac_user'@'localhost' IDENTIFIED BY 'password';
+MariaDB [(none)]> GRANT SELECT,INSERT,UPDATE,DELETE ON guac_db.* TO 'guac_user'@'localhost';
+MariaDB [(none)]> FLUSH PRIVILEGES;
+MariaDB [(none)]> EXIT;
+
+10 - Import SQL Schema Files and Create Properties Files For Guacamole
+
+cd guacamole-auth-jdbc-1.5.4/mysql/schema
+cat *.sql | mysql -u root -p guac_db
+
+sudo vi /etc/guacamole/guacamole.properties
+# MySQL properties
+mysql-hostname: 127.0.0.1
+mysql-port: 3306
+mysql-database: guac_db
+mysql-username: guac_user
+mysql-password: password
+
+sudo systemctl restart tomcat9 guacd mysql
+
+11- Access Apache Guacamole From the Web Interface
+
+http://server-ip:8080/guacamole
+
+username: guacadmin
+password: guacadmin
+
+
+
+
